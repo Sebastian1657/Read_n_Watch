@@ -3,7 +3,7 @@
 #### Faza 1: Inicjalizacja i Konfiguracja (Środowisko i Pamięć)
 
 - [x] Zainicjuj projekt poleceniem `npx create-expo-app@latest --template tabs`.
-- [ ] Oczyść katalog `app/` z domyślnego kodu i przygotuj czyste grupy tras: `(tabs)`, `(auth)`.
+- [x] Oczyść katalog `app/` z domyślnego kodu i przygotuj czyste grupy tras: `(tabs)`, `(auth)`.
 - [ ] Zainstaluj klienta Supabase (`@supabase/supabase-js`).
 - [ ] Zainstaluj `react-native-mmkv` i skonfiguruj plik adaptera, aby Supabase używało MMKV do bezpiecznego przechowywania tokenów sesji.
 - [ ] Zainstaluj i skonfiguruj `expo-sqlite`. Utwórz zapytania inicjalizujące tabele bazy lokalnej (np. `CREATE TABLE IF NOT EXISTS offline_items (...)`).

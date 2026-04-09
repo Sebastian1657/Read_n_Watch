@@ -1,8 +1,8 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React from "react";
+import { StyleSheet, Text, View } from "react-native";
 
 export default function MoviesScreen() {
-    return (
+  return (
     <View style={styles.container}>
       <Text>Movies Screen</Text>
     </View>
@@ -12,7 +12,7 @@ export default function MoviesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
