@@ -16,6 +16,14 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npx expo start
    ```
 
+## Supabase setup
+
+1. Copy `.env.example` to `.env`.
+2. Fill in `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY`.
+3. Import `supabase` from `src/api/supabase` anywhere auth or database access is needed.
+
+Supabase auth is configured to persist the session in MMKV through a React Native storage adapter defined in `src/api/supabaseStorage.ts`.
+
 In the output, you'll find options to open the app in a
 
 - [development build](https://docs.expo.dev/develop/development-builds/introduction/)

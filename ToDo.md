@@ -4,8 +4,8 @@
 
 - [x] Zainicjuj projekt poleceniem `npx create-expo-app@latest --template tabs`.
 - [x] Oczyść katalog `app/` z domyślnego kodu i przygotuj czyste grupy tras: `(tabs)`, `(auth)`.
-- [ ] Zainstaluj klienta Supabase (`@supabase/supabase-js`).
-- [ ] Zainstaluj `react-native-mmkv` i skonfiguruj plik adaptera, aby Supabase używało MMKV do bezpiecznego przechowywania tokenów sesji.
+- [x] Zainstaluj klienta Supabase (`@supabase/supabase-js`).
+- [x] Zainstaluj `react-native-mmkv` i skonfiguruj plik adaptera, aby Supabase używało MMKV do bezpiecznego przechowywania tokenów sesji.
 - [ ] Zainstaluj i skonfiguruj `expo-sqlite`. Utwórz zapytania inicjalizujące tabele bazy lokalnej (np. `CREATE TABLE IF NOT EXISTS offline_items (...)`).
 
 #### Faza 2: Backend (Supabase)
@@ -20,9 +20,9 @@
 
 #### Faza 3: Uwierzytelnianie i Nawigacja bazowa
 
-- [ ] Zbuduj ekrany logowania i rejestracji w katalogu `app/(auth)`.
-- [ ] Utwórz niestandardowy hook (np. `useAuth.ts`), który nasłuchuje zmian stanu sesji z Supabase.
-- [ ] W pliku `app/_layout.tsx` wdróż logikę ochrony tras (Route Protection): jeśli brak aktywnej sesji, przekieruj do `(auth)`, w przeciwnym razie do `(tabs)`.
+- [x] Zbuduj ekrany logowania i rejestracji w katalogu `app/(auth)`.
+- [x] Utwórz niestandardowy hook (np. `useAuth.ts`), który nasłuchuje zmian stanu sesji z Supabase.
+- [x] W pliku `app/_layout.tsx` wdróż logikę ochrony tras (Route Protection): jeśli brak aktywnej sesji, przekieruj do `(auth)`, w przeciwnym razie do `(tabs)`.
 
 #### Faza 4: Integracja API zewnętrznych
 
