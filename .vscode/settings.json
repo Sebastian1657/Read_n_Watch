@@ -4,11 +4,6 @@
     "source.organizeImports": "explicit",
     "source.sortMembers": "explicit"
   },
-  "files.exclude": {
-    "**/node_modules": true
-  },
-  "search.exclude": {
-    "**/node_modules": true
-  },
+
   "typescript.preferences.includePackageJsonAutoImports": "auto"
 }
