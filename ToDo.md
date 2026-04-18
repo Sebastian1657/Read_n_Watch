@@ -6,7 +6,7 @@
 - [x] Oczyść katalog `app/` z domyślnego kodu i przygotuj czyste grupy tras: `(tabs)`, `(auth)`.
 - [x] Zainstaluj klienta Supabase (`@supabase/supabase-js`).
 - [x] Zainstaluj `react-native-mmkv` i skonfiguruj plik adaptera, aby Supabase używało MMKV do bezpiecznego przechowywania tokenów sesji.
-- [ ] Zainstaluj i skonfiguruj `expo-sqlite`. Utwórz zapytania inicjalizujące tabele bazy lokalnej (np. `CREATE TABLE IF NOT EXISTS offline_items (...)`).
+- [x] Zainstaluj i skonfiguruj `expo-sqlite`. Utwórz zapytania inicjalizujące tabele bazy lokalnej (`offline_items`, `sync_queue`).
 
 #### Faza 2: Backend (Supabase)
 
@@ -49,6 +49,7 @@
   2. Jeśli online: wyślij do Supabase i zapisz w `expo-sqlite`.
   3. Jeśli offline: zapisz tylko w `expo-sqlite` z dodatkową flagą `sync_pending: true`.
 - [ ] Wdróż mechanizm synchronizacji w tle. Przy każdym uruchomieniu aplikacji sprawdź flagi `sync_pending` i wyślij zaległe operacje do Supabase.
+- [x] Utwórz centralną warstwę lokalnego zapisu w `src/store/localDb.ts` i inicjalizuj ją przy starcie aplikacji.
 
 #### Faza 7: Optymalizacja i Testy
 

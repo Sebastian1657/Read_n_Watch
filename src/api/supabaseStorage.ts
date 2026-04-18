@@ -12,13 +12,29 @@ const createScopedKey = (key: string) => {
 
 export const supabaseStorage = {
   getItem: async (key: string) => {
-    const value = getStorage().getString(createScopedKey(key));
-    return value ?? null;
+    try {
+      const value = getStorage().getString(createScopedKey(key));
+      return value ?? null;
+    } catch {
+      // Storage nie jest jeszcze zainicjalizowane (Supabase woła storage
+      // asynchronicznie od razu po createClient, zanim initializeStorage()
+      // zdazy sie wykonac). Zwracamy null — Supabase potraktuje to jak brak sesji
+      // i ponowi probe po pelnej inicjalizacji.
+      return null;
+    }
   },
   setItem: async (key: string, value: string) => {
-    getStorage().set(createScopedKey(key), value);
+    try {
+      getStorage().set(createScopedKey(key), value);
+    } catch {
+      // j.w. — zapis zostanie powtorzony gdy Supabase odswiezy token po inicjalizacji.
+    }
   },
   removeItem: async (key: string) => {
-    getStorage().remove(createScopedKey(key));
+    try {
+      getStorage().remove(createScopedKey(key));
+    } catch {
+      // j.w.
+    }
   },
 };

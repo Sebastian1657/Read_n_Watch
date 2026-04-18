@@ -1,4 +1,5 @@
 import { AuthProvider, useAuth } from "@/src/hooks/useAuth";
+import { initializeLocalDatabase } from "@/src/store/localDb";
 import { initializeStorage } from "@/src/store/mmkv";
 import { Redirect, Stack, useSegments } from "expo-router";
 import { useEffect, useState } from "react";
@@ -6,14 +7,22 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import "../global.css";
 
 export default function RootLayout() {
-  const [isStorageReady, setIsStorageReady] = useState(false);
+  const [isBootstrapReady, setIsBootstrapReady] = useState(false);
   const [storageError, setStorageError] = useState<string | null>(null);
 
   useEffect(() => {
-    initializeStorage()
-      .then(() => setIsStorageReady(true))
-      .catch(() => {
-        setStorageError("Nie udalo sie zainicjalizowac bezpiecznego storage sesji.");
+    Promise.all([initializeStorage(), initializeLocalDatabase()])
+      .then(() => setIsBootstrapReady(true))
+      .catch((error: unknown) => {
+        const reason =
+          error instanceof Error
+            ? error.message
+            : "Nieznany blad inicjalizacji pamieci lokalnej.";
+
+        console.error("[bootstrap] initialize failed:", error);
+        setStorageError(
+          `Nie udalo sie zainicjalizowac pamieci lokalnej.\n${reason}`,
+        );
       });
   }, []);
 
@@ -26,11 +35,11 @@ export default function RootLayout() {
     );
   }
 
-  if (!isStorageReady) {
+  if (!isBootstrapReady) {
     return (
       <View style={styles.stateContainer}>
         <ActivityIndicator size="small" color="#007AFF" />
-        <Text style={styles.message}>Przygotowywanie bezpiecznej sesji...</Text>
+        <Text style={styles.message}>Przygotowywanie pamieci lokalnej...</Text>
       </View>
     );
   }
