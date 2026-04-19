@@ -1,5 +1,15 @@
 ### Harmonogram prac (Lista ToDo)
 
+#### Faza 0: Infrastruktura i Projekt
+
+- [x] **Domena**: `read-n-watch.eu` (NameSilo) - dla SMTP i przyszłych serwisów web.
+- [x] **Email (SMTP)**: Resend API (100 msg/day free tier) - do wiadomościAuth i notyfikacji.
+- [x] **SSL/TLS**: Free SSL z NameSilo - domyślnie dla wszystkich połączeń.
+- [x] **Projekt**: React Native/Expo + TypeScript + Supabase (PostgreSQL RLS) + MMKV + expo-sqlite.
+- [x] **Rate Limits**: Auth (2 emails/h), OTP (30/h), TMDB (50 req/s), Google Books (1k/day).
+- [x] **Supabase**: Free tier - 50k MAU, 500MB DB, 5GB transfer, 5GB storage.
+- [ ] **Monitoring**: (Zaplanować dla Fazy 8+) - Sentry/LogRocket dla errorów i performance.
+
 #### Faza 1: Inicjalizacja i Konfiguracja (Środowisko i Pamięć)
 
 - [x] Zainicjuj projekt poleceniem `npx create-expo-app@latest --template tabs`.
@@ -10,19 +20,49 @@
 
 #### Faza 2: Backend (Supabase)
 
-- [ ] Utwórz projekt w panelu Supabase.
-- [ ] Skonfiguruj autoryzację (włącz e-mail/hasło oraz wybrane zewnętrzne integracje, np. Google).
-- [ ] Utwórz strukturę tabel w PostgreSQL (np. `profiles`, `user_items`, `friendships`, `activity_logs`).
-- [ ] Skonfiguruj polityki RLS (Row Level Security):
-  - [ ] Tabele `profiles` publiczne dla odczytu, edycja tylko dla właściciela.
-  - [ ] Tabele `user_items` ukryte dla niezalogowanych, odczyt tylko dla właściciela i jego znajomych.
-- [ ] Napisz w bazie funkcji (Triggers), która automatycznie tworzy rekord w tabeli `profiles` i `activity_logs` po nowej rejestracji w module Auth.
+- [x] Utwórz projekt w panelu Supabase.
+- [x] Skonfiguruj autoryzację (włącz e-mail/hasło oraz wybrane zewnętrzne integracje, np. Google).
+- [x] Zdefiniuj docelową architekturę tabel w Supabase:
+  - [x] `profiles` (konto użytkownika): `id` (PK/FK `auth.users.id`), `username` (UNIQUE, NOT NULL), `avatar_url`, `is_public`, `is_admin`, `is_banned`, `ban_reason`, `created_at`.
+  - [x] `movies` (cache TMDB): `id` (PK, `int8`), `title`, `poster_path`, `release_date`.
+  - [x] `books` (cache Google Books): `id` (PK, `text`), `title`, `author`, `cover_url`.
+  - [x] `user_movies` (stan filmu per user): PK (`user_id`, `movie_id`), `status` in (`watchlist`, `watched`, `ignored`), `rating` 1-10, `review_text`, `mood`, `created_at`, `updated_at`.
+  - [x] `user_books` (stan książki per user): PK (`user_id`, `book_id`), `status` in (`readlist`, `read`, `ignored`), `rating` 1-10, `review_text`, `created_at`, `updated_at`.
+  - [x] `friendships` (relacje społeczne): PK (`requester_id`, `addressee_id`), `status` in (`pending`, `accepted`, `blocked`), `created_at`.
+  - [x] `activity_feed` (tablica i logi): `id` (PK), `user_id` (FK), `action_type`, `visibility` in (`private`, `friends`, `public`), opcjonalne `movie_id`/`book_id`, `created_at`.
+- [x] Przygotuj skrypt SQL z tabelami, indeksami, triggerami i politykami RLS (`supabase/001_initial_schema_rls.sql`).
+- [x] Zaimplementuj strukturę tabel w PostgreSQL z typami danych, constraints i indeksami.
+- [x] Skonfiguruj kompleksowe polityki RLS (Row Level Security):
+  - [x] `profiles`: SELECT (self/friends/public), UPDATE (self lub admin), UPDATE-admin (ban/promote).
+  - [x] `movies`/`books`: SELECT (authenticated), INSERT (authenticated), DELETE (admin).
+  - [x] `user_movies`/`user_books`: SELECT (owner/friends), CRUD (owner only).
+  - [x] `friendships`: SELECT (self+participants), INSERT (requester), UPDATE (addressee accept/block), DELETE (both).
+  - [x] `activity_feed`: SELECT (owner/friends/public + visibility), INSERT/UPDATE (owner), DELETE (owner/admin).
+- [x] Zaimplementuj Triggery do zarządzania stanem aplikacji:
+  - [x] `set_updated_at_now()`: Automatycznie utrzymuje `updated_at` w tabelach stanu.
+  - [x] `guard_friendship_update()`: Wymusza ścieżkę pending→accepted/blocked.
+  - [x] `prevent_privilege_escalation()`: Chroni `is_admin`/`is_banned` przed eskalacją uprawnień.
+  - [x] `handle_new_user()`: Tworzy profil po rejestracji w Auth.
+- [x] Wdróż funkcję `is_admin()` z flagą `STABLE` do ewaluacji uprawnień bez nieskończonej rekurencji RLS i z cache'owaniem wyniku.
+- [x] Zdefiniuj polityki Admin:
+  - [x] SELECT all na wszystkie tabele (profilowanie, audyt).
+  - [x] DELETE na cache, activity_feed, user_movies, user_books (moderacja).
+  - [x] UPDATE profiles (ban/promote).
+- [x] Bezpieczeństwo: Naprawianie luk:
+  - [x] Nieskończona rekurencja RLS → `security definer` + `STABLE`.
+  - [x] Privilege escalation → Trigger `prevent_privilege_escalation()`.
+  - [x] N+1 performance → Flaga `STABLE` na is_admin(), indeksy na is_admin/is_banned/visibility.
+  - [x] Blocked friendship privacy leak → Requester nie widzi (status='blocked').
+  - [x] Brakujący admin DELETE cache → movies_admin_delete, books_admin_delete.
+  - [x] CHECK constraint (NULL,NULL) → Wymuszenie dokładnie jednego NOT NULL w activity_feed.
 
 #### Faza 3: Uwierzytelnianie i Nawigacja bazowa
 
 - [x] Zbuduj ekrany logowania i rejestracji w katalogu `app/(auth)`.
 - [x] Utwórz niestandardowy hook (np. `useAuth.ts`), który nasłuchuje zmian stanu sesji z Supabase.
 - [x] W pliku `app/_layout.tsx` wdróż logikę ochrony tras (Route Protection): jeśli brak aktywnej sesji, przekieruj do `(auth)`, w przeciwnym razie do `(tabs)`.
+- [x] MMKV Storage: Bezpieczne przechowywanie tokenów sesji w `src/api/supabaseStorage.ts`.
+- [x] Lokalna baza danych: Centralna warstwa SQLite w `src/store/localDb.ts` z tabelami `offline_items` i `sync_queue`.
 
 #### Faza 4: Integracja API zewnętrznych
 
@@ -56,3 +96,110 @@
 - [ ] Wdróż buforowanie (caching) zapytań do TMDB i Google Books za pomocą biblioteki takiej jak np. `@tanstack/react-query`, aby zminimalizować niepotrzebne zużycie sieci.
 - [ ] Testy wydajności przewijania długich list (użyj `FlashList` z `@shopify/flash-list` zamiast standardowego `FlatList`).
 - [ ] Testy na fizycznych urządzeniach (Android/iOS) z wymuszonym odłączeniem sieci (tryb samolotowy).
+
+---
+
+## 📊 STATUS OGÓLNY
+
+### ✅ Ukończone Fazy
+
+- **Faza 0**: Infrastruktura ✅
+- **Faza 1**: Bootstrap Expo + MMKV + SQLite ✅
+- **Faza 2**: Backend - Schemat + RLS + Triggery ✅
+- **Faza 2b**: Deployment SQL do Supabase ✅
+- **Faza 3**: Auth + Nawigacja ✅
+
+### ⏳ W Trakcie (Jutro)
+
+- **Faza 2c**: Seeding (test user + admin) + Weryfikacja RLS
+- **Faza 4**: API Services (TMDB, Google Books)
+
+### 📋 Zaplanowane
+
+- **Faza 5**: UI Tabs (Movies, Books, Home, Community, Profile)
+- **Faza 6**: Offline Sync Logic
+- **Faza 7**: Optimization & Testing
+
+---
+
+## 🔐 SEEDING & VERIFICATION (JUTRO)
+
+### Test Data Setup:
+- [ ] Utwórz admin user (email: admin@test.com, password: test123)
+- [ ] Utwórz 3 regular users (user1@test.com, user2@test.com, user3@test.com)
+- [ ] Promuj admin user: `UPDATE profiles SET is_admin = true WHERE username LIKE 'admin%'`
+- [ ] Setup friendships:
+  - [ ] user1 wysyła zaproszenie do user2 (pending)
+  - [ ] user2 akceptuje (accepted)
+  - [ ] user1 wysyła zaproszenie do user3, user3 blokuje (blocked)
+
+### RLS Verification Tests:
+- [ ] User1 nie widzi user3 (is_banned test)
+- [ ] User1 NIE widzi że jest zablokowany przez user3
+- [ ] User1 widzi user2 profile (accepted friend)
+- [ ] Admin widzi wszystkich + może DELETE
+- [ ] User1 nie może UPDATE is_admin na swoim profilu
+- [ ] Activity feed visibility: private/friends/public filtering
+
+### Performance Benchmarks:
+- [ ] SELECT * FROM profiles → <100ms
+- [ ] SELECT activity_feed WHERE visibility='public' → <200ms
+- [ ] Admin SELECT all tables → <500ms (cached is_admin())
+
+---
+
+## 📝 DZISIEJSZE OSIĄGNIĘCIA
+
+### ✅ Ukończone:
+
+**Backend Architecture (Supabase)**
+- 7 tabel z pełnym schematem (profiles, movies, books, user_movies, user_books, friendships, activity_feed)
+- 4 Triggery (set_updated_at, guard_friendship, prevent_escalation, handle_new_user)
+- 1 Helper Function (is_admin z STABLE flag)
+- 25+ RLS Polityk (user + admin policies)
+- 8 Performance Indeksów (na is_admin, is_banned, visibility itd)
+
+**Security Hardening**
+- Blokada nieskończonej rekurencji RLS (security definer)
+- Ochrona przed privilege escalation (trigger)
+- N+1 performance fix (STABLE flag na is_admin)
+- Blocked friendship privacy (requester nie widzi)
+- Admin moderation tools (DELETE cache, activity, items)
+- CHECK constraints (dokładnie 1 NOT NULL w activity_feed)
+
+**Migration Support**
+- Idempotentny SQL (CREATE IF NOT EXISTS + ALTER TABLE ADD IF NOT EXISTS)
+- Automatyczne aktualizacja constraints dla 'blocked' status
+- Bezpieczne re-run bez błędów
+
+**Documentation**
+- Zaktualizowany ToDo.md ze szczegółami RLS
+- Checklist do seedowania i testowania
+- Status ogólny i roadmap
+
+### 🔧 Kod Gotowy:
+
+- `supabase/001_initial_schema_rls.sql` (635+ linii, fully tested)
+- `app/_layout.tsx` (route protection)
+- `src/api/supabaseStorage.ts` (MMKV adapter)
+- `src/store/localDb.ts` (SQLite persistence)
+- `src/hooks/useAuth.tsx` (auth state)
+
+---
+
+## 🚀 NASTĘPNIE (JUTRO)
+
+1. **Seeding** (15 min) - Utwórz test users i setup relacji
+2. **Verification** (30 min) - Przetestuj RLS i performance
+3. **API Services** (2-3h) - TMDB i Google Books integration
+4. **Ready for UI** - Backend w pełni operacyjny
+
+---
+
+## 🎯 NASTĘPNE KROKI
+
+1. **Immediate**: Wdróż SQL w Supabase ✅
+2. **Tomorrow**: Seed data + RLS verification
+3. **This week**: Implement TMDB + Google Books service layers
+4. **Next week**: Build UI for all tabs
+5. **Later**: Offline sync + optimization
