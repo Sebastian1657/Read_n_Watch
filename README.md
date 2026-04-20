@@ -24,6 +24,15 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 
 Supabase auth is configured to persist the session in MMKV through a React Native storage adapter defined in `src/api/supabaseStorage.ts`.
 
+## Supabase seeding
+
+1. Apply schema first using `supabase/001_initial_schema_rls.sql`.
+2. Create test users in Supabase Dashboard (`Authentication -> Users`) for emails used in the seed file.
+3. Run `supabase/002_seed_data.sql` in Supabase SQL Editor.
+4. (Optional) Edit emails and sample records in the seed file before running.
+
+The seed script is idempotent, so you can run it multiple times without creating duplicated core records.
+
 In the output, you'll find options to open the app in a
 
 - [development build](https://docs.expo.dev/develop/development-builds/introduction/)

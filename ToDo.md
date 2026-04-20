@@ -6,7 +6,7 @@
 - [x] **Email (SMTP)**: Resend API (100 msg/day free tier) - do wiadomościAuth i notyfikacji.
 - [x] **SSL/TLS**: Free SSL z NameSilo - domyślnie dla wszystkich połączeń.
 - [x] **Projekt**: React Native/Expo + TypeScript + Supabase (PostgreSQL RLS) + MMKV + expo-sqlite.
-- [x] **Rate Limits**: Auth (2 emails/h), OTP (30/h), TMDB (50 req/s), Google Books (1k/day).
+- [x] **Rate Limits**: Auth (2 emails/h), OTP (30/h), Simkl (wg planu API), Google Books (1k/day).
 - [x] **Supabase**: Free tier - 50k MAU, 500MB DB, 5GB transfer, 5GB storage.
 - [ ] **Monitoring**: (Zaplanować dla Fazy 8+) - Sentry/LogRocket dla errorów i performance.
 
@@ -66,11 +66,11 @@
 
 #### Faza 4: Integracja API zewnętrznych
 
-- [ ] Uzyskaj klucz API do TMDB i zwiększ limit (zweryfikuj kartę) w Google Cloud Console dla Google Books API.
-- [ ] Utwórz pliki serwisów (np. `tmdbService.ts`, `booksService.ts`) zawierające funkcje do:
-  - [ ] Pobierania trendów (dla Ekranu Głównego).
-  - [ ] Wyszukiwania zaawansowanego (z paginacją).
-  - [ ] Pobierania szczegółów konkretnej pozycji.
+- [x] Uzyskaj klucz API do Simkl i zweryfikuj warunki użycia dla projektu komercyjnego; osobno utrzymaj Google Books API dla książek.
+- [x] Utwórz pliki serwisów (np. `simklService.ts`, `booksService.ts`) zawierające funkcje do:
+  - [x] Pobierania trendów (dla Ekranu Głównego).
+  - [x] Wyszukiwania zaawansowanego (z paginacją).
+  - [x] Pobierania szczegółów konkretnej pozycji.
 
 #### Faza 5: Budowa Głównego Interfejsu (Tabs)
 
@@ -81,6 +81,14 @@
 - [ ] **Ekran Główny:** Zaimplementuj widoki przewijane w poziomie (Horizontal ScrollView) dla list topowych pozycji i nowości.
 - [ ] **Społeczność:** Zbuduj listę (Feed) pobierającą aktywność (recenzje, dodania do list) od powiązanych kont (znajomych).
 - [ ] **Konto:** Zbuduj panel zarządzania profilem i odnośniki do osobistych zestawień.
+
+#### Faza 8: Monetyzacja i Model Przychodu
+
+- [ ] **Reklamy:** Zdefiniuj miejsca ekspozycji reklam w aplikacji (feed, discovery, puste stany) oraz zasady ich częstotliwości.
+- [ ] **Bez reklam:** Dodaj możliwość wykupienia planu bez reklam (jednorazowy zakup lub subskrypcja).
+- [ ] **Płatności:** Zaimplementuj bramkę płatności i logikę weryfikacji statusu zakupu po stronie backendu.
+- [ ] **Uprawnienia premium:** Wprowadź flagę/subskrypcję premium w profilu użytkownika i egzekwuj ją w UI oraz backendzie.
+- [ ] **Analityka monetyzacji:** Przygotuj mierzenie konwersji, retention i wpływu reklam na użycie aplikacji.
 
 #### Faza 6: Logika Offline i Synchronizacja
 
@@ -112,19 +120,21 @@
 ### ⏳ W Trakcie (Jutro)
 
 - **Faza 2c**: Seeding (test user + admin) + Weryfikacja RLS
-- **Faza 4**: API Services (TMDB, Google Books)
+- **Faza 4**: API Services (Simkl, Google Books)
 
 ### 📋 Zaplanowane
 
 - **Faza 5**: UI Tabs (Movies, Books, Home, Community, Profile)
 - **Faza 6**: Offline Sync Logic
 - **Faza 7**: Optimization & Testing
+- **Faza 8**: Monetization (ads, no-ads, payments, premium)
 
 ---
 
 ## 🔐 SEEDING & VERIFICATION (JUTRO)
 
 ### Test Data Setup:
+
 - [ ] Utwórz admin user (email: admin@test.com, password: test123)
 - [ ] Utwórz 3 regular users (user1@test.com, user2@test.com, user3@test.com)
 - [ ] Promuj admin user: `UPDATE profiles SET is_admin = true WHERE username LIKE 'admin%'`
@@ -134,6 +144,7 @@
   - [ ] user1 wysyła zaproszenie do user3, user3 blokuje (blocked)
 
 ### RLS Verification Tests:
+
 - [ ] User1 nie widzi user3 (is_banned test)
 - [ ] User1 NIE widzi że jest zablokowany przez user3
 - [ ] User1 widzi user2 profile (accepted friend)
@@ -142,7 +153,8 @@
 - [ ] Activity feed visibility: private/friends/public filtering
 
 ### Performance Benchmarks:
-- [ ] SELECT * FROM profiles → <100ms
+
+- [ ] SELECT \* FROM profiles → <100ms
 - [ ] SELECT activity_feed WHERE visibility='public' → <200ms
 - [ ] Admin SELECT all tables → <500ms (cached is_admin())
 
@@ -153,6 +165,7 @@
 ### ✅ Ukończone:
 
 **Backend Architecture (Supabase)**
+
 - 7 tabel z pełnym schematem (profiles, movies, books, user_movies, user_books, friendships, activity_feed)
 - 4 Triggery (set_updated_at, guard_friendship, prevent_escalation, handle_new_user)
 - 1 Helper Function (is_admin z STABLE flag)
@@ -160,6 +173,7 @@
 - 8 Performance Indeksów (na is_admin, is_banned, visibility itd)
 
 **Security Hardening**
+
 - Blokada nieskończonej rekurencji RLS (security definer)
 - Ochrona przed privilege escalation (trigger)
 - N+1 performance fix (STABLE flag na is_admin)
@@ -168,11 +182,13 @@
 - CHECK constraints (dokładnie 1 NOT NULL w activity_feed)
 
 **Migration Support**
+
 - Idempotentny SQL (CREATE IF NOT EXISTS + ALTER TABLE ADD IF NOT EXISTS)
 - Automatyczne aktualizacja constraints dla 'blocked' status
 - Bezpieczne re-run bez błędów
 
 **Documentation**
+
 - Zaktualizowany ToDo.md ze szczegółami RLS
 - Checklist do seedowania i testowania
 - Status ogólny i roadmap
@@ -185,13 +201,18 @@
 - `src/store/localDb.ts` (SQLite persistence)
 - `src/hooks/useAuth.tsx` (auth state)
 
+### 🔄 Zmieniony kierunek:
+
+- Integracja filmowa przechodzi z TMDB na Simkl, bo projekt jest komercyjny i potrzebuje zgodności z warunkami użycia oraz przewidywalnego modelu kosztów.
+- Monetyzacja staje się osobnym strumieniem prac: reklamy, plan bez reklam, płatności i status premium.
+
 ---
 
 ## 🚀 NASTĘPNIE (JUTRO)
 
 1. **Seeding** (15 min) - Utwórz test users i setup relacji
 2. **Verification** (30 min) - Przetestuj RLS i performance
-3. **API Services** (2-3h) - TMDB i Google Books integration
+3. **API Services** (2-3h) - Simkl i Google Books integration
 4. **Ready for UI** - Backend w pełni operacyjny
 
 ---
@@ -200,6 +221,7 @@
 
 1. **Immediate**: Wdróż SQL w Supabase ✅
 2. **Tomorrow**: Seed data + RLS verification
-3. **This week**: Implement TMDB + Google Books service layers
+3. **This week**: Implement Simkl + Google Books service layers
 4. **Next week**: Build UI for all tabs
 5. **Later**: Offline sync + optimization
+6. **Then**: Monetization stack (ads, no-ads purchase, payments, premium gating)

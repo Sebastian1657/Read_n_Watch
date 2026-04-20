@@ -92,8 +92,72 @@ create table if not exists public.activity_feed (
 
 -- Ensure all columns exist (for existing tables from older migrations)
 alter table if exists public.user_movies add column if not exists created_at timestamptz default now();
+alter table if exists public.user_movies add column if not exists updated_at timestamptz default now();
+alter table if exists public.user_movies add column if not exists mood text;
 alter table if exists public.user_books add column if not exists created_at timestamptz default now();
+alter table if exists public.user_books add column if not exists updated_at timestamptz default now();
 alter table if exists public.activity_feed add column if not exists visibility text default 'friends';
+
+-- Canonical constraints reconciliation (safe re-run)
+alter table if exists public.profiles
+  drop constraint if exists profiles_ban_reason_check;
+alter table if exists public.profiles
+  add constraint profiles_ban_reason_check
+  check (char_length(ban_reason) <= 500);
+
+alter table if exists public.user_movies
+  drop constraint if exists user_movies_status_check;
+alter table if exists public.user_movies
+  add constraint user_movies_status_check
+  check (status in ('watchlist', 'watched', 'ignored'));
+
+alter table if exists public.user_movies
+  drop constraint if exists user_movies_rating_check;
+alter table if exists public.user_movies
+  add constraint user_movies_rating_check
+  check (rating between 1 and 10);
+
+alter table if exists public.user_books
+  drop constraint if exists user_books_status_check;
+alter table if exists public.user_books
+  add constraint user_books_status_check
+  check (status in ('readlist', 'read', 'ignored'));
+
+alter table if exists public.user_books
+  drop constraint if exists user_books_rating_check;
+alter table if exists public.user_books
+  add constraint user_books_rating_check
+  check (rating between 1 and 10);
+
+alter table if exists public.friendships
+  drop constraint if exists friendships_check;
+alter table if exists public.friendships
+  add constraint friendships_check
+  check (requester_id <> addressee_id);
+
+alter table if exists public.friendships
+  drop constraint if exists friendships_status_check;
+alter table if exists public.friendships
+  add constraint friendships_status_check
+  check (status in ('pending', 'accepted', 'blocked'));
+
+alter table if exists public.activity_feed
+  drop constraint if exists activity_feed_visibility_check;
+alter table if exists public.activity_feed
+  add constraint activity_feed_visibility_check
+  check (visibility in ('private', 'friends', 'public'));
+
+alter table if exists public.activity_feed
+  drop constraint if exists activity_feed_check;
+alter table if exists public.activity_feed
+  drop constraint if exists activity_feed_single_target_check;
+alter table if exists public.activity_feed
+  add constraint activity_feed_single_target_check
+  check (
+    (movie_id is not null and book_id is null)
+    or
+    (movie_id is null and book_id is not null)
+  );
 
 -- Indexes for performance and RLS filters
 create index if not exists idx_user_movies_user_id on public.user_movies(user_id);
@@ -111,17 +175,7 @@ create index if not exists idx_profiles_banned on public.profiles(is_banned) whe
 create index if not exists idx_profiles_is_admin on public.profiles(is_admin) where is_admin = true;
 create index if not exists idx_activity_feed_visibility on public.activity_feed(visibility) where visibility in ('public', 'friends');
 
--- Migration helper: fix friendships status constraint for 'blocked' status if needed
-do $$
-begin
-  -- Drop old constraint if it exists and recreate with 'blocked' status
-  alter table public.friendships drop constraint if exists friendships_status_check;
-  alter table public.friendships add constraint friendships_status_check check (status in ('pending', 'accepted', 'blocked'));
-exception when others then
-  -- Constraint may already be correct, continue
-  null;
-end;
-$$;
+-- Friendship status constraint is reconciled in canonical constraints section above.
 
 -- Utility trigger: maintain updated_at for state tables
 create or replace function public.set_updated_at_now()
@@ -200,7 +254,15 @@ returns trigger
 language plpgsql
 security definer
 as $$
+declare
+  jwt_role text;
 begin
+  -- Allow trusted system contexts (SQL editor / service role) to perform bootstrap and admin operations.
+  jwt_role := auth.role();
+  if current_user in ('postgres', 'supabase_admin') or jwt_role = 'service_role' then
+    return new;
+  end if;
+
   -- If attempting to change admin or ban status
   if (old.is_admin IS DISTINCT FROM new.is_admin)
       or (old.is_banned IS DISTINCT FROM new.is_banned)
@@ -479,6 +541,7 @@ with check (
 
 drop policy if exists friendships_update_participants on public.friendships;
 drop policy if exists friendships_update_accept_addressee on public.friendships;
+drop policy if exists friendships_update_accept_or_block_addressee on public.friendships;
 create policy friendships_update_accept_or_block_addressee
 on public.friendships
 for update
