@@ -30,7 +30,7 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
+# env files
 .env*.local
 .env
 
@@ -39,7 +39,10 @@ yarn-error.*
 
 # visual code
 .vs
+.vscode/
 
 # generated native folders
 /ios
 /android
+.env
+.env
